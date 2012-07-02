@@ -2,8 +2,8 @@ require 'formula'
 
 class Elasticsearch < Formula
   homepage 'http://www.elasticsearch.org'
-  url 'https://github.com/downloads/elasticsearch/elasticsearch/elasticsearch-0.19.1.tar.gz'
-  md5 'feb0c28bb43eba30f8f09c766e3f6774'
+  url 'https://github.com/downloads/elasticsearch/elasticsearch/elasticsearch-0.19.7.tar.gz'
+  md5 '2d4f6d608862c47963483a1d7fa6e8c6'
 
   def cluster_name
     "elasticsearch_#{ENV['USER']}"
@@ -28,6 +28,9 @@ class Elasticsearch < Formula
       # 2. Configure paths
       s.gsub! /#\s*path\.data\: [^\n]+/, "path.data: #{var}/elasticsearch/"
       s.gsub! /#\s*path\.logs\: [^\n]+/, "path.logs: #{var}/log/elasticsearch/"
+
+      # 3. Bind to loopback IP for laptops roaming different networks
+      s.gsub! /#\s*network\.host\: [^\n]+/, "network.host: 127.0.0.1"
     end
 
     inreplace "#{bin}/elasticsearch.in.sh" do |s|
@@ -63,6 +66,10 @@ class Elasticsearch < Formula
         launchctl unload -w ~/Library/LaunchAgents/#{plist_path.basename}
         ln -nfs #{plist_path} ~/Library/LaunchAgents/
         launchctl load -wF ~/Library/LaunchAgents/#{plist_path.basename}
+
+    If upgrading from 0.18 ElasticSearch requires flushing before shutting
+    down the cluster with no indexing operations happening after flush:
+        curl host:9200/_flush
 
     To stop the ElasticSearch daemon:
         launchctl unload -wF ~/Library/LaunchAgents/#{plist_path.basename}
@@ -100,6 +107,11 @@ class Elasticsearch < Formula
             <string>-f</string>
             <string>-D es.config=#{prefix}/config/elasticsearch.yml</string>
           </array>
+          <key>EnvironmentVariables</key>
+          <dict>
+            <key>ES_JAVA_OPTS</key>
+            <string>-Xss200000</string>
+          </dict>
           <key>RunAtLoad</key>
           <true/>
           <key>UserName</key>

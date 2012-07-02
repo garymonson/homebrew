@@ -1,6 +1,6 @@
 require 'formula'
 
-class NeedsSnowLeopardOrNewer < Requirement
+class SnowLeopardOrNewer < Requirement
   def satisfied?
     MacOS.snow_leopard?
   end
@@ -11,20 +11,13 @@ class NeedsSnowLeopardOrNewer < Requirement
 end
 
 class Phantomjs < Formula
-  url "http://phantomjs.googlecode.com/files/phantomjs-1.5.0-macosx-static.zip"
   homepage 'http://www.phantomjs.org/'
-  sha1 'b87152ce691e7ed1937d30f86bc706a408d47f64'
+  url "http://phantomjs.googlecode.com/files/phantomjs-1.6.0-macosx-static.zip"
+  sha1 '7e4a4f069ffb32ab693d3234a9d67096a7ad23a3'
 
-  depends_on NeedsSnowLeopardOrNewer.new
+  depends_on SnowLeopardOrNewer.new
 
   def install
-    bin.install "bin/phantomjs"
-  end
-
-  def caveats; <<-EOS.undent
-    PhantomJS in Homebrew currently does not hide the dock icon.
-    For more information see:
-    http://code.google.com/p/phantomjs/issues/detail?id=281
-    EOS
+    bin.install 'bin/phantomjs'
   end
 end
