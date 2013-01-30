@@ -10,7 +10,7 @@ class GstPluginsUgly < Formula
   depends_on 'gst-plugins-base'
 
   # The set of optional dependencies is based on the intersection of
-  # gst-plugins-ugly-0.10.17/REQUIREMENTS and Homebrew formulas
+  # gst-plugins-ugly-0.10.17/REQUIREMENTS and Homebrew formulae
   depends_on 'dirac' => :optional
   depends_on 'mad' => :optional
   depends_on 'jpeg' => :optional
@@ -32,9 +32,19 @@ class GstPluginsUgly < Formula
   depends_on 'theora' => :optional
   depends_on 'libmms' => :optional
   depends_on 'x264' => :optional
+  depends_on 'opencore-amr' => :optional
+  depends_on 'libcdio' => :optional
 
   def install
     ENV.append "CFLAGS", "-no-cpp-precomp -funroll-loops -fstrict-aliasing"
+
+    # Fixes build error, missing includes.
+    # https://github.com/mxcl/homebrew/issues/14078
+    nbcflags = `pkg-config --cflags opencore-amrnb`.chomp
+    wbcflags = `pkg-config --cflags opencore-amrwb`.chomp
+    ENV['AMRNB_CFLAGS'] = nbcflags + "-I#{HOMEBREW_PREFIX}/include/opencore-amrnb"
+    ENV['AMRWB_CFLAGS'] = wbcflags + "-I#{HOMEBREW_PREFIX}/include/opencore-amrwb"
+
     system "./configure", "--disable-debug", "--disable-dependency-tracking",
                           "--prefix=#{prefix}",
                           "--mandir=#{man}"

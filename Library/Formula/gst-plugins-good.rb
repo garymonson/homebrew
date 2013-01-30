@@ -10,7 +10,7 @@ class GstPluginsGood < Formula
   depends_on 'gst-plugins-base'
 
   # The set of optional dependencies is based on the intersection of
-  # gst-plugins-good-0.10.30/REQUIREMENTS and Homebrew formulas
+  # gst-plugins-good-0.10.30/REQUIREMENTS and Homebrew formulae
   depends_on 'orc' => :optional
   depends_on 'gtk+' => :optional
   depends_on 'check' => :optional
@@ -24,6 +24,7 @@ class GstPluginsGood < Formula
   depends_on 'libshout' => :optional
   depends_on 'speex' => :optional
   depends_on 'taglib' => :optional
+  depends_on 'libsoup' => :optional
 
   def install
     system "./configure", "--disable-debug",
