@@ -82,9 +82,9 @@ class FormulaTests < Test::Unit::TestCase
     assert_equal 'file:///foo.com/testball-0.2.tbz', f.devel.url
     assert_equal 'https://github.com/mxcl/homebrew.git', f.head.url
 
-    assert_nil f.stable.specs
-    assert_nil f.bottle.specs
-    assert_nil f.devel.specs
+    assert_empty f.stable.specs
+    assert_empty f.bottle.specs
+    assert_empty f.devel.specs
     assert_equal({ :tag => 'foo' }, f.head.specs)
 
     assert_equal CurlDownloadStrategy, f.stable.download_strategy
@@ -110,11 +110,8 @@ class FormulaTests < Test::Unit::TestCase
     assert_match /[0-9a-fA-F]{40}/, f.stable.checksum.hexdigest
     assert_match /[0-9a-fA-F]{64}/, f.devel.checksum.hexdigest
 
-    assert_nil f.stable.md5
     assert_nil f.stable.sha256
-    assert_nil f.bottle.md5
     assert_nil f.bottle.sha256
-    assert_nil f.devel.md5
     assert_nil f.devel.sha1
 
     assert_equal 1, f.stable.mirrors.length

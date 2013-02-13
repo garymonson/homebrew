@@ -1,26 +1,25 @@
 require 'formula'
 
 class GitManuals < Formula
-  url 'http://git-core.googlecode.com/files/git-manpages-1.8.1.2.tar.gz'
-  sha1 '142222a27dfec52256831f2d0e2ee655f75c1077'
+  url 'http://git-core.googlecode.com/files/git-manpages-1.8.1.3.tar.gz'
+  sha1 '12aaa8a0428e64d194665379ab0335d786728930'
 end
 
 class GitHtmldocs < Formula
-  url 'http://git-core.googlecode.com/files/git-htmldocs-1.8.1.2.tar.gz'
-  sha1 '3df491003d026b8f4b2de378e57b930a98f0a595'
+  url 'http://git-core.googlecode.com/files/git-htmldocs-1.8.1.3.tar.gz'
+  sha1 '6b1e57bde2f2b0a86532390c15bfa7b181c50db2'
 end
 
 class Git < Formula
   homepage 'http://git-scm.com'
-  url 'http://git-core.googlecode.com/files/git-1.8.1.2.tar.gz'
-  sha1 '29a2dee568b1f86e9d3d8f9dcc376f24439b6a0c'
+  url 'http://git-core.googlecode.com/files/git-1.8.1.3.tar.gz'
+  sha1 '29ed9047263f9835726200226451339276641779'
 
   head 'https://github.com/git/git.git'
 
-  depends_on 'pcre' if build.include? 'with-pcre'
-
   option 'with-blk-sha1', 'Compile with the block-optimized SHA1 implementation'
-  option 'with-pcre', 'Compile with the PCRE library'
+
+  depends_on 'pcre' => :optional
 
   def install
     # If these things are installed, tell Git build system to not use them
@@ -37,7 +36,7 @@ class Git < Formula
 
     ENV['BLK_SHA1'] = '1' if build.include? 'with-blk-sha1'
 
-    if build.include? 'with-pcre'
+    if build.with? 'pcre'
       ENV['USE_LIBPCRE'] = '1'
       ENV['LIBPCREDIR'] = HOMEBREW_PREFIX
     end
@@ -65,12 +64,12 @@ class Git < Formula
       bin.install 'git-subtree'
     end
 
-    # install the completion scripts from 'contrib' first
-    (etc+'bash_completion.d').install 'contrib/completion/git-completion.bash'
-    (etc+'bash_completion.d').install 'contrib/completion/git-prompt.sh'
+    # install the completion script first because it is inside 'contrib'
+    bash_completion.install 'contrib/completion/git-completion.bash'
+    bash_completion.install 'contrib/completion/git-prompt.sh'
 
-    (share+'zsh/site-functions').install 'contrib/completion/git-completion.zsh' => '_git'
-    ln_s "#{etc}/bash_completion.d/git-completion.bash", "#{share}/zsh/site-functions"
+    zsh_completion.install 'contrib/completion/git-completion.zsh' => '_git'
+    ln_sf "#{etc}/bash_completion.d/git-completion.bash", zsh_completion
 
     (share+'git-core').install 'contrib'
 

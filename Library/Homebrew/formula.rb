@@ -1,13 +1,13 @@
 require 'download_strategy'
 require 'dependency_collector'
 require 'formula_support'
+require 'formula_lock'
 require 'hardware'
 require 'bottles'
 require 'patches'
 require 'compilers'
 require 'build_environment'
 require 'build_options'
-require 'extend/set'
 
 
 class Formula
@@ -137,6 +137,9 @@ class Formula
   # generally we don't want var stuff inside the keg
   def var; HOMEBREW_PREFIX+'var' end
 
+  def bash_completion; prefix+'etc/bash_completion.d' end
+  def zsh_completion;  share+'zsh/site-functions'     end
+
   # override this to provide a plist
   def plist; nil; end
   alias :startup_plist :plist
@@ -146,9 +149,8 @@ class Formula
   def plist_manual; self.class.plist_manual end
   def plist_startup; self.class.plist_startup end
 
-  def build
-    self.class.build
-  end
+  # Defined and active build-time options.
+  def build; self.class.build; end
 
   def opt_prefix; HOMEBREW_PREFIX/:opt/name end
 
@@ -165,9 +167,7 @@ class Formula
   # Can be overridden to selectively disable bottles from formulae.
   # Defaults to true so overridden version does not have to check if bottles
   # are supported.
-  def pour_bottle?
-    true
-  end
+  def pour_bottle?; true end
 
   # tell the user about any caveats regarding this package, return a string
   def caveats; nil end
@@ -180,8 +180,7 @@ class Formula
   # return a Hash eg.
   #   {
   #     :p0 => ['http://foo.com/patch1', 'http://foo.com/patch2'],
-  #     :p1 =>  'http://bar.com/patch2',
-  #     :p2 => ['http://moo.com/patch5', 'http://moo.com/patch6']
+  #     :p1 =>  'http://bar.com/patch2'
   #   }
   # The final option is to return DATA, then put a diff after __END__. You
   # can still return a Hash with DATA as the value for a patch level key.
@@ -239,19 +238,12 @@ class Formula
   end
 
   def lock
-    HOMEBREW_CACHE_FORMULA.mkpath
-    lockpath = HOMEBREW_CACHE_FORMULA/"#{@name}.brewing"
-    @lockfile = lockpath.open(File::RDWR | File::CREAT)
-    unless @lockfile.flock(File::LOCK_EX | File::LOCK_NB)
-      raise OperationInProgressError, @name
-    end
+    @lock = FormulaLock.new(name)
+    @lock.lock
   end
 
   def unlock
-    unless @lockfile.nil?
-      @lockfile.flock(File::LOCK_UN)
-      @lockfile.close
-    end
+    @lock.unlock unless @lock.nil?
   end
 
   def == b
@@ -288,7 +280,7 @@ class Formula
   end
 
   def self.class_s name
-    #remove invalid characters and then camelcase it
+    # remove invalid characters and then camelcase it
     name.capitalize.gsub(/[-_.\s]([a-zA-Z0-9])/) { $1.upcase } \
                    .gsub('+', 'x')
   end
@@ -379,7 +371,8 @@ class Formula
       install_type = :from_url
     elsif name.match bottle_regex
       bottle_filename = Pathname(name).realpath
-      name = bottle_filename.basename.to_s.rpartition('-').first
+      version = Version.parse(bottle_filename).to_s
+      name = bottle_filename.basename.to_s.rpartition("-#{version}").first
       path = Formula.path(name)
       install_type = :from_local_bottle
     else
@@ -429,6 +422,7 @@ class Formula
     end
 
     raise NameError if !klass.ancestors.include? Formula
+    raise NameError if klass == Formula
 
     return klass.new(name) if install_type == :from_name
     return klass.new(name, path.to_s)
@@ -473,10 +467,8 @@ class Formula
   end
 
   # The full set of Requirements for this formula's dependency tree.
-  def recursive_requirements
-    reqs = ComparableSet.new
-    recursive_dependencies.each { |d| reqs.merge d.to_formula.requirements }
-    reqs.merge requirements
+  def recursive_requirements(&block)
+    Requirement.expand(self, &block)
   end
 
   def to_hash
@@ -593,7 +585,6 @@ public
   def fetch
     # Ensure the cache exists
     HOMEBREW_CACHE.mkpath
-
     return @downloader.fetch, @downloader
   end
 
@@ -702,11 +693,7 @@ private
       @build ||= BuildOptions.new(ARGV.options_only)
     end
 
-    def url val=nil, specs=nil
-      if val.nil?
-        return @stable.url if @stable
-        return @url if @url
-      end
+    def url val, specs={}
       @stable ||= SoftwareSpec.new
       @stable.url(val, specs)
     end
@@ -728,7 +715,7 @@ private
       @devel.instance_eval(&block)
     end
 
-    def head val=nil, specs=nil
+    def head val=nil, specs={}
       return @head if val.nil?
       @head ||= HeadSoftwareSpec.new
       @head.url(val, specs)
@@ -814,7 +801,7 @@ private
       @test = block
     end
 
-    private
+  private
 
     def post_depends_on(dep)
       # Generate with- or without- options for optional and recommended
